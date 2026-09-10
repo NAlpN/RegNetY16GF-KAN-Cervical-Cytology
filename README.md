@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Paper: IEEE ICECER'26](https://img.shields.io/badge/IEEE-ICECER'26-00629B.svg)](https://www.ieee.org/)
 
-Official implementation of the **Hybrid RegNetY-16GF + Kolmogorov-Arnold Network (KAN)** pipeline for automated multi-class classification and explainable artificial intelligence (XAI) in **Liquid-Based Cervical Cytology (CCID)**.
+Official PyTorch implementation of the **Hybrid RegNetY-16GF + Kolmogorov-Arnold Network (KAN)** pipeline for automated multi-class classification and nuclear-centric explainable artificial intelligence (XAI) in **Liquid-Based Cervical Cytology (CCCID)**.
 
 ---
 
@@ -17,7 +17,7 @@ Official implementation of the **Hybrid RegNetY-16GF + Kolmogorov-Arnold Network
   <img src="assets/proposed_regnet_kan_architecture.png" alt="Proposed RegNetY-16GF + KAN Architecture" width="100%"/>
 </p>
 <p align="center">
-  <em>Figure 1: End-to-end architecture pipeline featuring cytological data augmentation, RegNetY-16GF backbone with Squeeze-and-Excitation (SE) bottleneck blocks, global average pooling (GAP), linear projection with LayerNorm and GELU, and a two-layer Kolmogorov–Arnold Network (KAN) classifier head.</em>
+  <em>Figure 1: End-to-end architecture pipeline featuring cytological data augmentation, RegNetY-16GF backbone with Squeeze-and-Excitation (SE) bottleneck blocks, global average pooling (GAP), linear projection with LayerNorm and GELU, and a two-layer Kolmogorov–Arnold Network (KAN) classifier head mapped to cytological diagnoses.</em>
 </p>
 
 ---
@@ -31,40 +31,41 @@ To overcome these issues, we introduce a hybrid framework uniting **RegNetY-16GF
 - **RegNetY-16GF Backbone**: Optimized design space with **Squeeze-and-Excitation (SE)** residual blocks to capture multi-scale nucleocytoplasmic relationships with exceptional parameter efficiency.
 - **Kolmogorov-Arnold Network (KAN) Head**: Replaces conventional fixed-weight MLPs with learnable 1D B-spline activation functions on network edges, unlocking non-linear fitting power and interpretability.
 - **Leakage-Free 5-Fold Stratified Group Cross-Validation**: Tiles derived from the same source slide are strictly kept in the same fold via `StratifiedGroupKFold` across 12,749 liquid-based cytology images.
-- **Anti-Overfitting Arsenal**: Integrated Random Resized Crop, Cutout (Random Erasing), ColorJitter, Label Smoothing ($0.08$), AdamW Weight Decay ($2\times 10^{-4}$), and Early Stopping.
-- **Nuclear-Centric Explainable AI (Grad-CAM)**: Visualizes model attention on cellular hyperchromasia and enlarged atypical nuclei.
+- **Bethesda-Aligned Pathology Protocol**: Aligns Carcinoma in Situ (CIS) within the **HSIL** category according to international cytopathology standards.
+- **Nuclear-Centric Explainable AI (Grad-CAM)**: High-resolution saliency maps showing precise attention localized directly on hyperchromatic, atypical cell nuclei.
 
 ---
 
 ## 📊 Benchmark Results
 
-Evaluated via **5-Fold Stratified Group Cross-Validation** on **12,749 liquid-based cytology images** across **6 Bethesda categories**:
+### 1. Primary 4-Class Lesion Classification (*LSIL, HSIL [CIS included], SCC, Adeno*)
+Evaluated via **5-Fold Stratified Group Cross-Validation** across **6,501 pathology-confirmed lesion cells**:
 
-### 1. Overall Model Comparison
+| Class Label | Bethesda Diagnosis | Sample Count | Accuracy (ACC) | Sensitivity (SEN) | Specificity (SPE) | Precision (PRE) | F1-Score | Multi-Class AUC |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **LSIL** | Low-grade Squamous Intraepithelial Lesion | 1,419 | 0.9797 | 0.9225 | 0.9957 | 0.9835 | 0.9520 | 0.9955 |
+| **HSIL** | High-grade Squamous Intraepithelial Lesion *(inc. CIS)* | 2,101 | 0.9475 | 0.9286 | 0.9566 | 0.9108 | 0.9196 | 0.9857 |
+| **SCC** | Squamous Cell Carcinoma | 2,552 | 0.9619 | 0.9495 | 0.9699 | 0.9532 | 0.9513 | 0.9882 |
+| **Adeno** | Cervical / Endometrial Adenocarcinoma | 429 | 0.9878 | 0.9744 | 0.9888 | 0.8601 | 0.9137 | 0.9990 |
+| **Macro Average** | *Overall Diagnostic Performance* | **6,501** | **0.9385 (%93.85)** | **0.9437 (%94.37)** | **0.9777 (%97.77)** | **0.9269 (%92.69)** | **0.9342 (%93.42)** | **0.9921 (%99.21)** |
 
-| Backbone Architecture | Head | Accuracy (ACC) | Sensitivity (Recall) | Specificity (SPE) | Precision (PRE) | F1-Score | Macro AUC |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **RegNetY-16GF (Proposed)** | **KAN** | **0.9405** | **0.9152** | **0.9867** | **0.9212** | **0.9178** | **0.9839** |
-| DenseNet-201 | KAN | 0.9360 | 0.9151 | 0.9859 | 0.9101 | 0.9122 | **0.9867** |
-| EfficientNetV2-L | KAN | 0.9395 | 0.9180 | 0.9872 | 0.9140 | 0.9154 | 0.9788 |
-| ConvNeXt-Large | KAN | 0.9266 | 0.9158 | 0.9849 | 0.8874 | 0.9002 | 0.9761 |
-| Swin Transformer V2-B | KAN | 0.7723 | 0.7611 | 0.9525 | 0.7433 | 0.7395 | 0.9521 |
-
-> **Summary:** The proposed **RegNetY-16GF + KAN** achieves the highest Accuracy (**94.05%**), Precision (**92.12%**), and F1-Score (**0.9178**).
+> **Summary:** The proposed **RegNetY-16GF + KAN** achieves an overall Accuracy of **93.85%**, Sensitivity of **94.37%**, Specificity of **97.77%**, Precision of **92.69%**, F1-Score of **93.42%**, and a Macro ROC AUC of **99.21%**.
 
 ---
 
-### 2. Per-Class Diagnostic Metrics (RegNetY-16GF + KAN)
+### 2. Supplementary 5-Class Bethesda Benchmark (*NILM, LSIL, HSIL, SCC, Adeno*)
+Evaluated on the complete **12,749 liquid-based cytology dataset**:
 
-| Class Label | Bethesda Diagnosis | Accuracy | Sensitivity (SEN) | Specificity (SPE) | Precision (PRE) | F1-Score | AUC |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **0_Normal** | Negative for Intraepithelial Lesion / Malignancy (NILM) | 0.9747 | 0.9781 | 0.9715 | 0.9706 | 0.9743 | 0.9920 |
-| **1_LSIL** | Low-grade Squamous Intraepithelial Lesion | 0.9862 | 0.9098 | 0.9958 | 0.9642 | 0.9362 | 0.9898 |
-| **2_HSIL** | High-grade Squamous Intraepithelial Lesion | 0.9651 | 0.8239 | 0.9779 | 0.7706 | 0.7963 | 0.9585 |
-| **3_CIS** | Carcinoma In Situ | 0.9809 | 0.8660 | 0.9911 | 0.8969 | 0.8812 | 0.9812 |
-| **4_SCC** | Squamous Cell Carcinoma | 0.9755 | 0.9389 | 0.9847 | 0.9389 | 0.9389 | 0.9865 |
-| **5_Adeno** | Endocervical / Endometrial Adenocarcinoma | 0.9987 | 0.9744 | 0.9995 | 0.9858 | 0.9801 | 0.9953 |
-| **Macro Average** | *Overall Diagnostic Performance* | **0.9405** | **0.9152** | **0.9867** | **0.9212** | **0.9178** | **0.9839** |
+| Class Label | Bethesda Diagnosis | Sample Count | Accuracy | Sensitivity (SEN) | Specificity (SPE) | Precision (PRE) | F1-Score | AUC |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **NILM (Normal)** | Negative for Intraepithelial Lesion / Malignancy | 6,248 | 0.9747 | 0.9774 | 0.9722 | 0.9712 | 0.9743 | 0.9920 |
+| **LSIL** | Low-grade Squamous Intraepithelial Lesion | 1,419 | 0.9861 | 0.9084 | 0.9959 | 0.9648 | 0.9358 | 0.9898 |
+| **HSIL** | High-grade Squamous Intraepithelial Lesion *(inc. CIS)* | 2,101 | 0.9671 | 0.9143 | 0.9775 | 0.8889 | 0.9015 | 0.9815 |
+| **SCC** | Squamous Cell Carcinoma | 2,552 | 0.9757 | 0.9369 | 0.9854 | 0.9413 | 0.9391 | 0.9865 |
+| **Adeno** | Adenocarcinoma | 429 | 0.9987 | 0.9744 | 0.9995 | 0.9858 | 0.9801 | 0.9953 |
+| **Macro Average** | *Overall 5-Class Performance* | **12,749** | **0.9511 (%95.11)** | **0.9423 (%94.23)** | **0.9861 (%98.61)** | **0.9504 (%95.04)** | **0.9461 (%94.61)** | **0.9890 (%98.90)** |
+
+*Formatted academic tables are available as Word document [`RegNetY16GF_KAN_Siniflandirma_Sonuclari.docx`](RegNetY16GF_KAN_Siniflandirma_Sonuclari.docx) and PDF [`RegNetY16GF_KAN_Siniflandirma_Sonuclari.pdf`](RegNetY16GF_KAN_Siniflandirma_Sonuclari.pdf).*
 
 ---
 
@@ -73,43 +74,51 @@ Evaluated via **5-Fold Stratified Group Cross-Validation** on **12,749 liquid-ba
 ### Out-Of-Fold (OOF) Confusion Matrix & Multi-Class ROC Curves
 
 <p align="center">
-  <img src="assets/regnet_y_16gf_confusion_matrix.png" width="48%" alt="RegNetY-16GF Confusion Matrix"/>
-  <img src="assets/regnet_y_16gf_roc_curve.png" width="48%" alt="RegNetY-16GF ROC Curve"/>
+  <img src="assets/regnet_y_16gf_4class_confusion_matrix.png" width="48%" alt="RegNetY-16GF 4-Class Confusion Matrix"/>
+  <img src="assets/regnet_y_16gf_4class_roc_curve.png" width="48%" alt="RegNetY-16GF 4-Class ROC Curve"/>
 </p>
 <p align="center">
-  <em>Figure 2: Confusion Matrix (left) and Multi-Class One-vs-Rest ROC curves (right) for RegNetY-16GF + KAN.</em>
+  <em>Figure 2: Out-Of-Fold Confusion Matrix (left) and Multi-Class One-vs-Rest ROC Curves (right) for RegNetY-16GF + KAN (Macro AUC = 0.9921).</em>
 </p>
 
-### Explainable AI (Grad-CAM) Saliency Maps
+### Explainable AI (Grad-CAM) Nuclear Localization
 
 <p align="center">
-  <img src="assets/gradcam/cam_000.png" width="85%" alt="Grad-CAM Nuclear Localization"/>
+  <img src="assets/gradcam/gradcam_pinpoint_4_classes_grid.png" width="90%" alt="Grad-CAM Nuclear Localization Grid"/>
 </p>
 <p align="center">
-  <em>Figure 3: Grad-CAM attention maps showing precise morphological localization on hyperchromatic cell nuclei.</em>
+  <em>Figure 3: High-resolution Grad-CAM attention maps demonstrating precise morphological localization on hyperchromatic, atypical cell nuclei across LSIL, HSIL, SCC, and Adenocarcinoma.</em>
 </p>
 
 ---
 
-## 📁 Repository Structure
+## 📁 Clean Repository Structure
 
 ```text
-├── assets/                                 # 300 DPI figures, architecture diagram, and ROC curves
-│   ├── proposed_regnet_kan_architecture.png
-│   ├── proposed_regnet_kan_architecture.pdf
-│   ├── regnet_y_16gf_confusion_matrix.png
-│   ├── regnet_y_16gf_roc_curve.png
-│   ├── densenet201_*, convnext_*, ...
-│   └── gradcam/                            # Grad-CAM saliency heatmaps
-├── results/                                # Benchmark CSV reports and run configurations
-│   ├── model_comparison_table.csv          # 5-model benchmark metrics (ACC, F1, SPE, AUC)
-│   ├── regnet_y_16gf_metrics.csv           # Class-wise metrics for RegNetY-16GF + KAN
-│   ├── densenet201_metrics.csv, ...
-│   └── run_config.json                     # Training hyperparameters
+├── assets/                                 # High-resolution figures and evaluation plots
+│   ├── proposed_regnet_kan_architecture.png# Updated 4-class architecture diagram (300 DPI)
+│   ├── proposed_regnet_kan_architecture.pdf# Vector PDF version of architecture
+│   ├── regnet_y_16gf_4class_confusion_matrix.png
+│   ├── regnet_y_16gf_4class_roc_curve.png
+│   ├── regnet_y_16gf_5class_confusion_matrix.png
+│   ├── regnet_y_16gf_5class_roc_curve.png
+│   └── gradcam/                            # Nucleus-centered Grad-CAM heatmaps
+│       ├── gradcam_pinpoint_4_classes_grid.png
+│       ├── gradcam_pinpoint_LSIL.png
+│       ├── gradcam_pinpoint_HSIL.png
+│       ├── gradcam_pinpoint_SCC.png
+│       └── gradcam_pinpoint_Adeno.png
+├── results/                                # Evaluation CSV reports
+│   ├── regnet_y_16gf_metrics.csv           # Primary 4-class benchmark metrics
+│   ├── regnet_y_16gf_4class_metrics.csv
+│   ├── regnet_y_16gf_5class_metrics.csv
+│   └── model_comparison_table.csv
+├── RegNetY16GF_KAN_Siniflandirma_Sonuclari.docx # Formatted Word report (Arial 11pt)
+├── RegNetY16GF_KAN_Siniflandirma_Sonuclari.pdf  # PDF report
 ├── main.py                                 # End-to-end 5-fold Stratified Group CV & Grad-CAM pipeline
 ├── requirements.txt                        # Python dependencies
 ├── environment.yml                         # Conda environment definition
-├── .gitignore                              # Git exclusion rules (prevents large weights/data commits)
+├── .gitignore                              # Git exclusion rules
 ├── LICENSE                                 # MIT License
 └── README.md                               # Project documentation
 ```
@@ -122,7 +131,7 @@ Evaluated via **5-Fold Stratified Group Cross-Validation** on **12,749 liquid-ba
 - **Python:** `3.12`
 - **PyTorch:** `2.4.1`
 - **CUDA Toolkit:** `12.4`
-- **cuDNN:** `Compatible v9.x` (pre-bundled with PyTorch)
+- **cuDNN:** `Compatible v9.x`
 
 ### 1. Installation
 
@@ -134,7 +143,7 @@ cd YOUR_REPOSITORY
 # Create and activate virtual environment
 python -m venv venv
 # On Windows:
-venv\Scripts\activate
+venv\Scriptsctivate
 # On Linux / macOS:
 source venv/bin/activate
 
@@ -154,10 +163,8 @@ Organize your cervical cytology dataset in class-specific subfolders under `data
 ```text
 data/
 └── train/
-    ├── 0_Normal/
     ├── 1_LSIL/
-    ├── 2_HSIL/
-    ├── 3_CIS/
+    ├── 2_HSIL/     # Place both HSIL and CIS tiles here (Bethesda standard)
     ├── 4_SCC/
     └── 5_Adeno/
 ```
@@ -168,26 +175,15 @@ data/
 
 ### 3. Training & Evaluation Pipeline
 
-#### Single GPU / Standard Execution:
+#### Standard Execution:
 ```bash
 python main.py --data-dir data/train --output-dir outputs_ccid --batch-size 12 --epochs 35
 ```
 
-#### Multi-GPU Setup (e.g. 2x NVIDIA A40 using torchrun / DistributedDataParallel):
+#### Multi-GPU Execution (DistributedDataParallel):
 ```bash
 torchrun --standalone --nproc_per_node=2 main.py --data-dir data/train --output-dir outputs_ccid --batch-size 12 --epochs 35 --workers 8
 ```
-
-#### Fast Sweep Mode (cuDNN benchmark enabled):
-```bash
-python main.py --data-dir data/train --batch-size 16 --fast
-```
-
-When execution completes:
-- Fold checkpoints are saved in `<output-dir>/checkpoints/`.
-- Grad-CAM visualizations are saved in `<output-dir>/<model>_fold<fold>/gradcam/`.
-- Confusion matrices and ROC curves are exported as 300 DPI PNGs in `<output-dir>/`.
-- Consolidated benchmark comparison is saved as `model_comparison_table.csv`.
 
 ---
 
