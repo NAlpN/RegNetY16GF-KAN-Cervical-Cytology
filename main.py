@@ -1,12 +1,3 @@
-"""ICECER'26 CCID: 5-model, group-safe stratified CV training pipeline.
-
-Run with (two A40 GPUs):
-    torchrun --standalone --nproc_per_node=2 ccid_cv_train.py --data-dir data
-
-The dataset is scanned recursively.  Tiles generated from one source slide are
-kept in one fold by deriving a group id from the filename before its final
-",slice" suffix.  This is essential to prevent tile-level data leakage.
-"""
 import argparse
 import csv
 import json
@@ -43,8 +34,6 @@ IMAGENET_MEAN, IMAGENET_STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 def seed_everything(seed: int) -> None:
     random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    # Determinism is preferable for reporting; disabling it via --fast enables
-    # cudnn benchmarking for the final production sweep.
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -67,9 +56,6 @@ def unwrap(model):
 
 
 def source_group(path: Path) -> str:
-    """Return a slide-level group: `002_(x,y,7).jpeg` -> `002_(x,y)`.
-    Directory is part of the key so matching filenames across classes cannot mix.
-    """
     stem = re.sub(r",\d+\)$", ")", path.stem)
     return f"{path.parent.as_posix()}::{stem}"
 
@@ -101,9 +87,6 @@ class CCIDDataset(Dataset):
             raise RuntimeError(f"Unreadable image: {path}") from exc
         return image, int(label), path, group
 
-
-# Pure-PyTorch KAN-like head, retaining the SIU project's backbone -> projection
-# -> KAN classifier design without relying on the external/CPU-oriented pykan API.
 class KANLinear(nn.Module):
     def __init__(self, in_features, out_features, grid_size=8, spline_order=3):
         super().__init__()
@@ -125,7 +108,6 @@ class KANLinear(nn.Module):
 class HybridBackboneKAN(nn.Module):
     def __init__(self, architecture: str, num_classes: int, dropout: float):
         super().__init__()
-        # torchvision weights are fetched automatically on first use and cached.
         if architecture == "convnext_large":
             self.backbone = models.convnext_large(weights=models.ConvNeXt_Large_Weights.DEFAULT)
             dim = self.backbone.classifier[-1].in_features; self.backbone.classifier[-1] = nn.Identity()
@@ -206,8 +188,6 @@ def train_fold(architecture, fold, train_records, val_records, classes, args, wo
     train_loader, val_loader, train_sampler = make_loaders(train_records, val_records, args, world, rank)
     model = HybridBackboneKAN(architecture, len(classes), args.dropout).to(device)
     if world > 1: model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=False)
-    # Class-balanced loss helps minority lesion classes; label smoothing + strong
-    # augmentation, AdamW and early stopping together reduce memorization.
     counts = np.bincount([x[1] for x in train_records], minlength=len(classes))
     weights = torch.tensor(counts.sum() / (len(classes) * np.maximum(counts, 1)), dtype=torch.float32, device=device)
     criterion = nn.CrossEntropyLoss(weight=weights, label_smoothing=args.label_smoothing)
@@ -320,7 +300,6 @@ def main():
             model, rows, checkpoint = train_fold(architecture, fold, [records[i] for i in tr], [records[i] for i in va], classes, args, world, rank, device, run_dir)
             if is_main():
                 model_rows.extend(rows)
-                # Grad-CAM uses the held-out samples and the fold's best checkpoint.
                 save_gradcam(model, [records[i] for i in va], classes, args, device, run_dir / f"{architecture}_fold{fold}")
             del model; torch.cuda.empty_cache()
             if dist.is_initialized(): dist.barrier()
